@@ -1,0 +1,541 @@
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Dashboard Monitoring Tomat</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <style>
+            :root{
+                --card-radius: 14px;
+            }
+            body { background: linear-gradient(180deg,#f4f7fb, #ffffff); font-family: Inter, system-ui, Arial; }
+            .top-cards .card{ border-radius: var(--card-radius); box-shadow: 0 6px 20px rgba(19,35,68,0.06); }
+            .metric-title{ font-size:0.9rem; color:#fff; opacity:0.95 }
+            .metric-value{ font-size:1.6rem; font-weight:700 }
+            .chart-card{ border-radius: var(--card-radius); box-shadow: 0 6px 24px rgba(13,38,77,0.06); }
+            /* fix chart height to avoid stretching the page */
+            .chart-card canvas { width: 100% !important; height: 320px !important; display:block }
+            .small-muted{ color:#6b7280 }
+            .rounded-pill-soft{ border-radius:999px; padding:.3rem .8rem; background:#eef2ff; color:#3730a3; font-weight:600 }
+            .alerts-list{ max-height:360px; overflow:auto }
+            .top-cards .card .icon{ font-size:1.1rem; opacity:0.95 }
+            .stat-sub{ font-size:0.85rem; color:rgba(255,255,255,0.85) }
+            .card-ghost{ background:transparent; border:none }
+        </style>
+    </head>
+    <body>
+        <div class="container py-4">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div>
+                    <h3 class="mb-0">Sistem Monitoring Perkebunan Tomat</h3>
+                    <div class="small-muted">Dashboard interaktif • data realtime</div>
+                </div>
+                <div>
+                    <span class="rounded-pill-soft">LIVE</span>
+                </div>
+            </div>
+
+            <!-- Top metrics -->
+            <div class="row top-cards g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="card p-3 text-white" style="background:linear-gradient(135deg,#3b82f6,#06b6d4); border-radius:var(--card-radius);">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="metric-title">Suhu</div>
+                                <div class="metric-value" id="val-suhu">-- <small style="font-size:0.7rem">°C</small></div>
+                                <div class="stat-sub">Sensor terakhir: <span id="ts-suhu" style="color:#fff">--</span></div>
+                            </div>
+                            <div class="icon"><i class="fa-solid fa-temperature-half"></i></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="card p-3 text-white" style="background:linear-gradient(135deg,#10b981,#34d399); border-radius:var(--card-radius);">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="metric-title">Cahaya</div>
+                                <div class="metric-value" id="val-cahaya">-- <small style="font-size:0.7rem">lux</small></div>
+                                <div class="stat-sub">Sensor terakhir: <span id="ts-cahaya" style="color:#fff">--</span></div>
+                            </div>
+                            <div class="icon"><i class="fa-solid fa-sun"></i></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="card p-3 text-white" style="background:linear-gradient(135deg,#f97316,#fb7185); border-radius:var(--card-radius);">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="metric-title">Kelembapan Tanah</div>
+                                <div class="metric-value" id="val-tanah">-- <small style="font-size:0.7rem">%</small></div>
+                                <div class="stat-sub">Sensor terakhir: <span id="ts-tanah" style="color:#fff">--</span></div>
+                            </div>
+                            <div class="icon"><i class="fa-solid fa-droplet"></i></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="card p-3 text-white" style="background:linear-gradient(135deg,#8b5cf6,#a78bfa); border-radius:var(--card-radius);">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="metric-title">PM2.5</div>
+                                <div style="display:flex;align-items:center;gap:.6rem">
+                                    <div class="metric-value" id="val-pm25">-- <small style="font-size:0.7rem">µg/m³</small></div>
+                                    <div id="aqi-pill" class="rounded-pill" style="padding:.25rem .6rem;font-weight:700;background:rgba(255,255,255,0.15);color:#fff;font-size:0.8rem">--</div>
+                                </div>
+                                <div class="stat-sub">Sensor terakhir: <span id="ts-pm25" style="color:#fff">--</span> • <span style="color:#fff">Avg 24j: <strong id="avg24-pm25">--</strong></span></div>
+                            </div>
+                            <div class="icon"><i class="fa-solid fa-wind"></i></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main row: chart + side list -->
+            <div class="row g-3">
+                <div class="col-lg-8">
+                    <div class="card chart-card p-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="m-0">Rata-rata PM2.5 per Jam (24 jam terakhir)</h5>
+                            <div class="small-muted">Menampilkan data terakhir (server menyimpan semua history)</div>
+                        </div>
+                        <div class="mb-2 d-flex align-items-center justify-content-between">
+                            <div>
+                                <small class="small-muted">Pilih lokasi untuk ditampilkan:</small>
+                            </div>
+                            <div class="d-flex align-items-center" style="gap:.75rem">
+                                <div id="location-controls" class="d-flex flex-wrap" style="gap:.5rem"></div>
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Chart type">
+                                    <input type="radio" class="btn-check" name="chartType" id="chart_line" autocomplete="off" checked>
+                                    <label class="btn btn-outline-secondary btn-sm" for="chart_line">Line</label>
+
+                                    <input type="radio" class="btn-check" name="chartType" id="chart_bar" autocomplete="off">
+                                    <label class="btn btn-outline-secondary btn-sm" for="chart_bar">Bar</label>
+                                </div>
+                            </div>
+                        </div>
+                        <canvas id="pmChart"></canvas>
+                        <div class="mt-3 small-muted">Data dashboard diperbarui otomatis setiap 5 detik, sedangkan grafik memakai rata-rata per jam.</div>
+                    </div>
+
+                    <div class="card mt-3 p-3">
+                        <h6 class="mb-3">Log Data Terbaru</h6>
+                        <div class="table-responsive">
+                            <table class="table align-middle">
+                                <thead>
+                                    <tr class="small-muted">
+                                        <th>Waktu</th>
+                                        <th>Lokasi</th>
+                                        <th>Suhu</th>
+                                        <th>Tanah</th>
+                                        <th>PM2.5</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-body">
+                                    {% for item in data %}
+                                    <tr>
+                                        <td>{{ item.timestamp }}</td>
+                                        <td>{{ item.lokasi }}</td>
+                                        <td>{{ item.suhu }}°C</td>
+                                        <td>{{ item.kelembapan_tanah }}%</td>
+                                        <td>{{ item.pm25 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card p-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="m-0">Notifikasi & Lokasi</h6>
+                            <small class="small-muted">Terbaru</small>
+                        </div>
+                        <div class="alerts-list" id="alert-box">
+                            {% if alerts|length == 0 %}
+                            <div class="text-muted small">Belum ada alert.</div>
+                            {% else %}
+                                {% for a in alerts %}
+                                <div class="d-flex gap-2 align-items-start mb-2">
+                                    <div class="badge bg-warning text-dark">ALERT</div>
+                                    <div>
+                                        <div><strong>{{ a.lokasi }}</strong></div>
+                                        <div class="small-muted">{{ a.pesan_alert[0] }} • <small>{{ a.timestamp }}</small></div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="card mt-3 p-3">
+                        <h6 class="mb-2">Ringkasan Lokasi</h6>
+                        <div class="small-muted">Daftar lokasi sensor dan read terakhir</div>
+                        <ul class="list-group list-group-flush mt-2" id="location-list">
+                            <!-- diisi oleh JS -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function fmt(v, suffix=""){
+                if (v===null || v===undefined || v==="") return "--";
+                return v + (suffix?(' '+suffix):'');
+            }
+
+            async function fetchLatest(){
+                const res = await fetch('/api/data_terbaru');
+                return res.json();
+            }
+
+            async function fetchLogs(){
+                const res = await fetch('/api/log_terbaru');
+                return res.json();
+            }
+
+            async function fetchAlerts(){
+                const res = await fetch('/api/alert_terbaru');
+                return res.json();
+            }
+
+            async function fetchHourlyPm25(){
+                const res = await fetch('/api/pm25_per_jam');
+                return res.json();
+            }
+
+            // keep user's selection state across re-renders
+            let locState = {};
+
+            // update metric cards
+            async function updateMetrics(){
+                const d = await fetchLatest();
+                document.getElementById('val-suhu').innerText = fmt(d.suhu, '°C');
+                document.getElementById('val-cahaya').innerText = fmt(d.cahaya, 'lux');
+                document.getElementById('val-tanah').innerText = fmt(d.kelembapan_tanah, '%');
+                document.getElementById('val-pm25').innerText = fmt(d.pm25, 'µg/m³');
+
+                const ts = d.timestamp || '--';
+                document.getElementById('ts-suhu').innerText = ts;
+                document.getElementById('ts-cahaya').innerText = ts;
+                document.getElementById('ts-tanah').innerText = ts;
+                document.getElementById('ts-pm25').innerText = ts;
+                // AQI indicator based on PM2.5
+                const pm = (d.pm25==null || d.pm25=="" )? null: Number(d.pm25);
+                const pill = document.getElementById('aqi-pill');
+                if (pm===null || isNaN(pm)){
+                    pill.innerText = '--';
+                    pill.style.background = 'rgba(255,255,255,0.12)';
+                } else {
+                    const cat = pm25ToAQI(pm);
+                    pill.innerText = `${cat.label}`;
+                    pill.style.background = cat.color;
+                }
+
+                // fetch 24h averages written by analisis.py (if available)
+                fetch('/static/stats_24jam.json').then(r=>r.json()).then(js=>{
+                    if (js && js.overall_avg_pm25!=null){
+                        document.getElementById('avg24-pm25').innerText = js.overall_avg_pm25.toFixed(1) + ' µg/m³';
+                    }
+                }).catch(()=>{});
+            }
+
+            function pm25ToAQI(pm){
+                // Simple category mapping (µg/m³)
+                // Good: 0-12, Moderate: 12.1-35.4, Unhealthy for Sensitive:35.5-55.4, Unhealthy:55.5-150.4, Very Unhealthy:150.5-250.4, Hazardous:>250.4
+                if (pm <= 12) return {label:'Good', color:'#10b981'};
+                if (pm <= 35.4) return {label:'Moderate', color:'#f59e0b'};
+                if (pm <= 55.4) return {label:'Unhealthy-S', color:'#f97316'};
+                if (pm <= 150.4) return {label:'Unhealthy', color:'#ef4444'};
+                if (pm <= 250.4) return {label:'Very Unhealthy', color:'#7c3aed'};
+                return {label:'Hazardous', color:'#111827'};
+            }
+
+            // update table and locations list
+            async function updateTableAndLocations(){
+                const rows = await fetchLogs();
+                const tbody = document.getElementById('table-body');
+                tbody.innerHTML = '';
+
+                const locSet = new Map();
+
+                if (!rows || rows.length===0){
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center">Belum ada data</td></tr>';
+                } else {
+                    for (const r of rows){
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${r.timestamp ?? '--'}</td>
+                            <td>${r.lokasi ?? '--'}</td>
+                            <td>${r.suhu ?? '--'}°C</td>
+                            <td>${r.kelembapan_tanah ?? '--'}%</td>
+                            <td>${r.pm25 ?? '--'}</td>
+                        `;
+                        tbody.appendChild(tr);
+
+                        if (!locSet.has(r.lokasi)) locSet.set(r.lokasi, r.timestamp);
+                    }
+                }
+
+                const locList = document.getElementById('location-list');
+                locList.innerHTML = '';
+                for (const [lok, ts] of locSet){
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    li.innerHTML = `<div>${lok}</div><small class="small-muted">${ts}</small>`;
+                    locList.appendChild(li);
+                }
+                renderLocationControls(Array.from(locSet.keys()));
+                return rows;
+            }
+
+            // build location selection controls (visible checkboxes, easier UX)
+            function renderLocationControls(locations){
+                const container = document.getElementById('location-controls');
+                // preserve user's previous choices; initialize missing locations to true
+                const newState = {};
+                locations.forEach(l=>{ newState[l] = (locState.hasOwnProperty(l) ? locState[l] : true); });
+                locState = newState;
+
+                container.innerHTML = '';
+
+                // All checkbox - checked if all locations selected
+                const allChecked = Object.values(locState).every(v=>v===true);
+                const divAll = document.createElement('div');
+                divAll.className = 'form-check form-check-inline';
+                divAll.innerHTML = `
+                    <input class="form-check-input" type="checkbox" id="loc_all" ${allChecked? 'checked': ''}>
+                    <label class="form-check-label small-muted" for="loc_all">All</label>
+                `;
+                container.appendChild(divAll);
+
+                locations.forEach((lok, idx) => {
+                    const id = `loc_chk_${idx}`;
+                    const checked = locState[lok] ? 'checked' : '';
+                    const dv = document.createElement('div');
+                    dv.className = 'form-check form-check-inline';
+                    dv.innerHTML = `
+                        <input class="form-check-input" type="checkbox" id="${id}" data-loc="${lok}" ${checked}>
+                        <label class="form-check-label small-muted" for="${id}">${lok}</label>
+                    `;
+                    container.appendChild(dv);
+                });
+
+                // events
+                container.querySelectorAll('input[type=checkbox]').forEach(cb => cb.addEventListener('change', (ev)=>{
+                    const allCb = document.getElementById('loc_all');
+                    const otherCbs = Array.from(container.querySelectorAll('input[type=checkbox]')).filter(i=>i.id!=='loc_all');
+                    if (cb.id === 'loc_all'){
+                        // set locState for all locations
+                        const checked = cb.checked;
+                        Object.keys(locState).forEach(k => locState[k] = checked);
+                        // reflect in DOM
+                        otherCbs.forEach(c=> c.checked = checked);
+                    } else {
+                        const lok = cb.dataset.loc;
+                        locState[lok] = cb.checked;
+                        const allCheckedNow = otherCbs.every(c=>c.checked);
+                        allCb.checked = allCheckedNow;
+                    }
+                    tick();
+                }));
+            }
+
+            function getSelectedLocations(){
+                // return locations currently selected in locState
+                return Object.keys(locState).filter(k=>locState[k]);
+            }
+
+            async function updateAlerts(){
+                const rows = await fetchAlerts();
+                const box = document.getElementById('alert-box');
+                box.innerHTML = '';
+                if (!rows || rows.length===0) {
+                    box.innerHTML = '<div class="text-muted small">Belum ada alert.</div>';
+                    return;
+                }
+                for (const a of rows){
+                    const pesan = (a.pesan_alert && a.pesan_alert.length)? a.pesan_alert[0] : '-';
+                    const div = document.createElement('div');
+                    div.className = 'd-flex gap-2 align-items-start mb-2';
+                    div.innerHTML = `<div class="badge bg-warning text-dark">ALERT</div><div><div><strong>${a.lokasi}</strong></div><div class="small-muted">${pesan} • <small>${a.timestamp}</small></div></div>`;
+                    box.appendChild(div);
+                }
+            }
+
+            // Chart setup (will rebuild datasets per location)
+            const ctx = document.getElementById('pmChart').getContext('2d');
+            let pmChart = null;
+            let currentChartType = 'line';
+
+            function createChart(type){
+                if (pmChart) pmChart.destroy();
+                currentChartType = type;
+                const commonOptions = {
+                    animation: { duration: 600, easing: 'easeOutCubic' },
+                    responsive:true,
+                    maintainAspectRatio: true,
+                    interaction: { mode: 'nearest', axis: 'x', intersect: false },
+                    scales: {
+                        x: { display:true, ticks:{maxRotation:0, autoSkip:true, maxTicksLimit:6}, grid:{color:'rgba(0,0,0,0.04)'} },
+                        y: { beginAtZero:true, grid:{color:'rgba(0,0,0,0.04)'} }
+                    },
+                    plugins: {
+                        legend: { display: true, position: 'right', labels:{boxWidth:12, padding:12} },
+                        tooltip: {
+                            callbacks: {
+                                title: (items) => {
+                                    const raw = items[0].label || '';
+                                    return formatTimestamp(raw);
+                                },
+                                label: (ctx)=>{
+                                    const v = ctx.formattedValue;
+                                    const loc = ctx.dataset.label || 'Unknown';
+                                    return `${loc}: ${v} µg/m³`;
+                                }
+                            }
+                        }
+                    },
+                    layout: { padding: { top: 6, right: 8, left: 4, bottom: 6 } }
+                };
+
+                const config = {
+                    type: type,
+                    data: { labels: [], datasets: [] },
+                    options: commonOptions
+                };
+
+                pmChart = new Chart(ctx, config);
+            }
+
+            // initialize chart
+            createChart('line');
+
+            // wire chart type toggles
+            // bind radio buttons directly (script is at end of body)
+            const rbLine = document.getElementById('chart_line');
+            const rbBar = document.getElementById('chart_bar');
+            if (rbLine){ rbLine.addEventListener('change', ()=>{ if (rbLine.checked) { createChart('line'); tick(); } }); }
+            if (rbBar){ rbBar.addEventListener('change', ()=>{ if (rbBar.checked) { createChart('bar'); tick(); } }); }
+
+            const colorPalette = ['#8b5cf6','#06b6d4','#f97316','#10b981','#3b82f6','#ef4444','#f59e0b','#7c3aed'];
+
+            function formatTimestamp(raw){
+                if (!raw) return '--';
+                // try to convert 'YYYY-MM-DD HH:MM:SS' to Date
+                try{
+                    const iso = raw.replace(' ', 'T');
+                    const d = new Date(iso);
+                    if (!isNaN(d)) return d.toLocaleString();
+                }catch(e){ }
+                return raw;
+            }
+
+            async function updateChart(){
+                const rows = await fetchHourlyPm25();
+                const labelSet = new Set();
+                const byLoc = {};
+
+                rows.forEach(r => {
+                    const lok = r.lokasi || 'Unknown';
+                    const jam = r.jam || '--';
+                    labelSet.add(jam);
+                    if (!byLoc[lok]) byLoc[lok] = {};
+                    byLoc[lok][jam] = (r.avg_pm25==null ? null : Number(r.avg_pm25));
+                });
+
+                const labels = Array.from(labelSet).sort();
+                const allLocations = Object.keys(byLoc).sort();
+                const selected = getSelectedLocations();
+                const toShow = (selected && selected.length? selected : allLocations);
+
+                const datasets = toShow.map((lok, i)=>{
+                    const data = labels.map(lab => {
+                        const v = (byLoc[lok] && byLoc[lok][lab] != undefined) ? byLoc[lok][lab] : null;
+                        return v;
+                    });
+                    const base = {
+                        label: lok,
+                        data,
+                        tension: 0.3,
+                        spanGaps: true
+                    };
+                    if (currentChartType === 'bar'){
+                        const mainColor = colorPalette[i % colorPalette.length];
+                        return Object.assign(base, {
+                            backgroundColor: mainColor,
+                            borderColor: mainColor,
+                            borderWidth: 2,
+                            borderRadius: 8,
+                            barPercentage: 0.75,
+                            categoryPercentage: 0.85
+                        });
+                    } else {
+                        return Object.assign(base, {
+                            borderColor: colorPalette[i % colorPalette.length],
+                            backgroundColor: colorPalette[i % colorPalette.length] + '33',
+                            pointRadius: 3,
+                            borderWidth: 2
+                        });
+                    }
+                });
+                // Style adjustments when only one dataset is shown
+                if (datasets.length === 1){
+                    datasets[0].borderWidth = 4;
+                    datasets[0].pointRadius = 5;
+                    pmChart.options.plugins.legend.display = false;
+                } else {
+                    pmChart.options.plugins.legend.display = true;
+                }
+
+                // Update in-place where possible to avoid flicker
+                const sameDatasetCount = pmChart.data.datasets.length === datasets.length;
+                pmChart.data.labels = labels;
+                if (sameDatasetCount){
+                    for (let i=0;i<datasets.length;i++){
+                        pmChart.data.datasets[i].data = datasets[i].data;
+                        // copy relevant style props depending on type
+                        if (currentChartType === 'bar'){
+                            pmChart.data.datasets[i].backgroundColor = datasets[i].backgroundColor;
+                            pmChart.data.datasets[i].borderColor = datasets[i].borderColor;
+                            pmChart.data.datasets[i].borderWidth = datasets[i].borderWidth;
+                            pmChart.data.datasets[i].borderRadius = datasets[i].borderRadius;
+                            pmChart.data.datasets[i].barPercentage = datasets[i].barPercentage;
+                            pmChart.data.datasets[i].categoryPercentage = datasets[i].categoryPercentage;
+                        } else {
+                            pmChart.data.datasets[i].borderColor = datasets[i].borderColor;
+                            pmChart.data.datasets[i].backgroundColor = datasets[i].backgroundColor;
+                            pmChart.data.datasets[i].borderWidth = datasets[i].borderWidth;
+                            pmChart.data.datasets[i].pointRadius = datasets[i].pointRadius;
+                        }
+                    }
+                } else {
+                    pmChart.data.datasets = datasets;
+                }
+                pmChart.update();
+            }
+
+            async function tick(){
+                try{
+                    await updateMetrics();
+                    await updateTableAndLocations();
+                    await updateAlerts();
+                    await updateChart();
+                }catch(e){ console.error(e); }
+            }
+
+            tick();
+            // refresh less frequently to reduce jitter
+            setInterval(tick, 5000);
+        </script>
+    </body>
+    </html>
+
