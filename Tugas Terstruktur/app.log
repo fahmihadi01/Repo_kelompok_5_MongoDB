@@ -1,0 +1,12 @@
+2026-05-06 14:21:29,773 - INFO - Query data mesin: cls
+2026-05-06 14:21:42,727 - INFO - Hitung reject rate
+2026-05-06 14:23:49,628 - INFO - Inserted data: {'batch': 'B001', 'mesin': 'CNC-01', 'jumlah': 200, 'reject': 10, 'tanggal': datetime.datetime(2026, 6, 5, 0, 0), '_id': ObjectId('69faec858f346cf238d1b84c')}
+2026-05-06 14:23:59,869 - INFO - Query data mesin: CNC-01
+2026-05-06 14:24:08,763 - INFO - Hitung reject rate
+2026-05-06 14:25:36,165 - INFO - Inserted data: {'batch': 'B002', 'mesin': 'CNC-02', 'jumlah': 150, 'reject': 20, 'tanggal': datetime.datetime(2026, 5, 6, 0, 0), '_id': ObjectId('69faecf0c3e00ec66d3bdb85')}
+2026-05-06 14:26:00,144 - INFO - Query data mesin: CNC-02
+2026-05-06 14:26:08,786 - INFO - Hitung reject rate
+2026-05-06 14:27:30,224 - INFO - Inserted data: {'batch': 'B001', 'mesin': 'CNC-01', 'jumlah': 200, 'reject': 10, 'tanggal': datetime.datetime(2026, 5, 6, 0, 0), '_id': ObjectId('69faed6200116598b8ae67e4')}
+2026-05-06 14:27:32,288 - INFO - Hitung reject rate
+2026-05-06 14:27:45,841 - INFO - Export laporan: Laporan_05-2026.csv
+2026-05-06 14:36:58,157 - INFO - Hitung reject rate
